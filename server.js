@@ -85,6 +85,12 @@ app.get('/csrf-token', (req, res) => {
   res.json({ csrfToken: req.csrfToken() });
 });
 
+// Catch-all route to serve React's index.html for any other routes
+// app.get('*', (req, res) => {
+//   res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
+// });
+
+
 // Start the server
 app.listen(app.get("port"), () => {
   console.log(`Server running at http://localhost:${app.get("port")}/`);
