@@ -1,3 +1,4 @@
+const dotenv = require("dotenv");
 const express = require("express");
 const session = require("express-session");
 const path = require("path");
@@ -5,6 +6,7 @@ const cors = require("cors");
 const csrf = require("csurf");
 const cookieParser = require("cookie-parser");
 const app = express();
+dotenv.config();
 
 // Set the port
 app.set("port", process.env.PORT || 3001);
