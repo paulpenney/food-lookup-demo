@@ -34,7 +34,7 @@ app.use(session({
   cookie: {
     secure: process.env.NODE_ENV === "production", // Use secure cookies in production
     httpOnly: true,
-    sameSite: 'Lax', // Add SameSite attribute
+    sameSite: 'Strict', // Add SameSite attribute
     maxAge: 24 * 60 * 60 * 1000 // Set cookie expiration to 24 hours
   }
 }));
