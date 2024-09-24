@@ -16,6 +16,8 @@ app.set("port", process.env.PORT || 3001);
 // Middleware to parse JSON requests
 app.use(express.json());
 
+app.set('trust proxy', 1);
+
 // Middleware to parse cookies
 app.use(cookieParser());
 
