@@ -19,22 +19,9 @@ app.use(express.json());
 // Middleware to parse cookies
 app.use(cookieParser());
 
-const allowedOrigins = [
-  'http://localhost:3000',
-  'https://fooddemo-1451f28c53d9.herokuapp.com',
-  // Add other allowed origins if necessary
-];
-
 app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true); // Allow requests with no origin (like mobile apps or curl requests)
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
-    }
-    return callback(null, true);
-  },
-  credentials: true
+  origin: 'http://localhost:3000', // Your React app's URL
+  credentials: true // Allow credentials like cookies (for sessions)
 }));
 
 // Configure session middleware
@@ -45,7 +32,7 @@ app.use(session({
   cookie: {
     secure: process.env.NODE_ENV === "production", // Use secure cookies in production
     httpOnly: true,
-    sameSite: 'Strict', // Add SameSite attribute
+    sameSite: 'Lax', // Add SameSite attribute
     maxAge: 24 * 60 * 60 * 1000 // Set cookie expiration to 24 hours
   }
 }));
