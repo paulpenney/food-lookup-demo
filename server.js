@@ -16,31 +16,41 @@ app.set("port", process.env.PORT || 3001);
 // Middleware to parse JSON requests
 app.use(express.json());
 
-app.set('trust proxy', 1);
+app.set("trust proxy", 1);
 
 // Middleware to parse cookies
 app.use(cookieParser());
 
-app.use(cors({
-  origin: 'http://localhost:3000', // Your React app's URL
-  credentials: true // Allow credentials like cookies (for sessions)
-}));
+app.use(
+  cors({
+    origin: "http://localhost:3000", // Your React app's URL
+    credentials: true, // Allow credentials like cookies (for sessions)
+  })
+);
 
 // Configure session middleware
-app.use(session({
-  secret: 'your-strong-secret-key', // Replace with a strong secret key
-  resave: false,
-  saveUninitialized: true,
-  cookie: {
-    secure: process.env.NODE_ENV === "production", // Use secure cookies in production
-    httpOnly: true,
-    sameSite: 'Strict', // Add SameSite attribute
-    maxAge: 24 * 60 * 60 * 1000 // Set cookie expiration to 24 hours
-  }
-}));
+app.use(
+  session({
+    secret: "your-strong-secret-key", // Replace with a strong secret key
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+      secure: process.env.NODE_ENV === "production", // Use secure cookies in production
+      httpOnly: true,
+      sameSite: "Strict", // Add SameSite attribute
+      maxAge: 24 * 60 * 60 * 1000, // Set cookie expiration to 24 hours
+    },
+  })
+);
 
 // CSRF protection middleware
-const csrfProtection = csrf({ cookie: true });
+const csrfProtection = csrf({
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "Strict",
+  },
+});
 app.use(csrfProtection);
 
 // Serve static assets if in production
@@ -84,7 +94,7 @@ app.post("/logout", (req, res) => {
 });
 
 // Route to get the CSRF token
-app.get('/csrf-token', (req, res) => {
+app.get("/csrf-token", (req, res) => {
   res.json({ csrfToken: req.csrfToken() });
 });
 
@@ -92,7 +102,6 @@ app.get('/csrf-token', (req, res) => {
 // app.get('*', (req, res) => {
 //   res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
 // });
-
 
 // Start the server
 app.listen(app.get("port"), () => {
