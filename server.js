@@ -43,6 +43,7 @@ app.use(csrfProtection);
 
 // Serve static assets if in production
 if (process.env.NODE_ENV === "production") {
+  console.log("[server.js] process.env.NODE_ENV is production, setting static path");
   app.use(express.static(path.join(__dirname, "client/build")));
 }
 
