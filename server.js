@@ -1,71 +1,88 @@
 const express = require("express");
-const fs = require("fs");
-const sqlite = require("sql.js");
-
-const filebuffer = fs.readFileSync("db/usda-nnd.sqlite3");
-
-const db = new sqlite.Database(filebuffer);
-
+const session = require("express-session");
+const path = require("path");
+const cors = require("cors");
+const csrf = require("csurf");
+const cookieParser = require("cookie-parser");
 const app = express();
 
+// Set the port
 app.set("port", process.env.PORT || 3001);
 
-// Express only serves static assets in production
+// Middleware to parse JSON requests
+app.use(express.json());
+
+// Middleware to parse cookies
+app.use(cookieParser());
+
+app.use(cors({
+  origin: 'http://localhost:3000', // Your React app's URL
+  credentials: true // Allow credentials like cookies (for sessions)
+}));
+
+// Configure session middleware
+app.use(session({
+  secret: 'your-strong-secret-key', // Replace with a strong secret key
+  resave: false,
+  saveUninitialized: true,
+  cookie: {
+    secure: process.env.NODE_ENV === "production", // Use secure cookies in production
+    httpOnly: true,
+    sameSite: 'Strict', // Add SameSite attribute
+    maxAge: 24 * 60 * 60 * 1000 // Set cookie expiration to 24 hours
+  }
+}));
+
+// CSRF protection middleware
+const csrfProtection = csrf({ cookie: true });
+app.use(csrfProtection);
+
+// Serve static assets if in production
 if (process.env.NODE_ENV === "production") {
-  app.use(express.static("client/build"));
+  app.use(express.static(path.join(__dirname, "client/build")));
 }
 
-const COLUMNS = [
-  "carbohydrate_g",
-  "protein_g",
-  "fa_sat_g",
-  "fa_mono_g",
-  "fa_poly_g",
-  "kcal",
-  "description"
-];
-app.get("/api/food", (req, res) => {
-  const param = req.query.q;
-
-  if (!param) {
-    res.json({
-      error: "Missing required parameter `q`"
-    });
-    return;
+// Route to handle login
+app.post("/login", (req, res) => {
+  const { username } = req.body;
+  if (username) {
+    req.session.username = username; // Store the username in the session
+    console.log("Login session:", req.session); // Log the session object
+    return res.json({ success: true, message: `Logged in as ${username}` });
   }
-
-  // WARNING: Not for production use! The following statement
-  // is not protected against SQL injections.
-  const r = db.exec(
-    `
-    select ${COLUMNS.join(", ")} from entries
-    where description like '%${param}%'
-    limit 100
-  `
-  );
-
-  if (r[0]) {
-    res.json(
-      r[0].values.map(entry => {
-        const e = {};
-        COLUMNS.forEach((c, idx) => {
-          // combine fat columns
-          if (c.match(/^fa_/)) {
-            e.fat_g = e.fat_g || 0.0;
-            e.fat_g = (parseFloat(e.fat_g, 10) +
-              parseFloat(entry[idx], 10)).toFixed(2);
-          } else {
-            e[c] = entry[idx];
-          }
-        });
-        return e;
-      })
-    );
-  } else {
-    res.json([]);
-  }
+  res.status(400).json({ success: false, message: "Username is required" });
 });
 
+// Route to check if the user is authenticated
+app.get("/check-auth", (req, res) => {
+  console.log("Raw cookies (check-auth):", req.headers.cookie); // Log the raw cookies
+  console.log("Check-auth session:", req.session); // Log the session object
+  if (req.session.username) {
+    return res.json({ authenticated: true, username: req.session.username });
+  }
+  res.json({ authenticated: false });
+});
+
+// Route to handle logout
+app.post("/logout", (req, res) => {
+  console.log("Raw cookies (logout):", req.headers.cookie); // Log the raw cookies
+  console.log("Logout session before destroy:", req.session); // Log the session object before destroying
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ success: false, message: "Error logging out" });
+    }
+    console.log("Logout session after destroy:", req.session); // Log the session object after destroying
+    res.json({ success: true, message: "Logged out successfully" });
+  });
+});
+
+// Route to get the CSRF token
+app.get('/csrf-token', (req, res) => {
+  res.json({ csrfToken: req.csrfToken() });
+});
+
+// Start the server
 app.listen(app.get("port"), () => {
-  console.log(`Find the server at: http://localhost:${app.get("port")}/`); // eslint-disable-line no-console
+  console.log(`Server running at http://localhost:${app.get("port")}/`);
+  console.log(`Node environment: ${process.env.NODE_ENV}`);
 });
