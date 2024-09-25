@@ -5,6 +5,9 @@ const path = require("path");
 const cors = require("cors");
 const csrf = require("csurf");
 const cookieParser = require("cookie-parser");
+const http = require("http");
+const { Server } = require("socket.io"); // Import socket.io
+
 const app = express();
 dotenv.config();
 
@@ -13,17 +16,27 @@ console.log("[server.js] process.env.NODE_ENV:", process.env.NODE_ENV);
 // Set the port
 app.set("port", process.env.PORT || 3001);
 
-// Middleware to parse JSON requests
+// Create an HTTP server to integrate with socket.io
+const server = http.createServer(app);
+
+// Initialize socket.io with CORS options
+const io = new Server(server, {
+  cors: {
+    origin: ["http://localhost:3000", "https://fooddemo-1451f28c53d9.herokuapp.com/"], // React app's URLs
+    methods: ["GET", "POST"],
+    credentials: true, // Enable credentials (cookies)
+  },
+});
+
 app.use(express.json());
 
 app.set("trust proxy", 1);
 
-// Middleware to parse cookies
 app.use(cookieParser());
 
 app.use(
   cors({
-    origin: "http://localhost:3000", // Your React app's URL
+    origin: ["http://localhost:3000", "https://fooddemo-1451f28c53d9.herokuapp.com/"], // React app's URLs
     credentials: true, // Allow credentials like cookies (for sessions)
   })
 );
@@ -37,7 +50,7 @@ app.use(
     cookie: {
       secure: process.env.NODE_ENV === "production", // Use secure cookies in production
       httpOnly: true,
-      sameSite: "Strict", // Add SameSite attribute
+      sameSite: "Strict",
       maxAge: 24 * 60 * 60 * 1000, // Set cookie expiration to 24 hours
     },
   })
@@ -59,6 +72,28 @@ if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "client/build")));
 }
 
+// Socket.io connection handler
+io.on("connection", (socket) => {
+  console.log("A user connected:", socket.id);
+
+    // Access cookies from the socket handshake
+    const cookies = socket.handshake.headers.cookie;
+    console.log("Cookies on connection:", cookies); // Log cookies when a connection is established
+  
+
+  // Example: Listen for a custom event from the client
+  socket.on("message", (data) => {
+    console.log("Message from client:", data);
+    // Emit a message back to the client
+    socket.emit("message", `Server received: ${data}`);
+  });
+
+  // Handle disconnect
+  socket.on("disconnect", () => {
+    console.log("A user disconnected:", socket.id);
+  });
+});
+
 // Route to handle login
 app.post("/login", (req, res) => {
   const { username } = req.body;
@@ -72,7 +107,6 @@ app.post("/login", (req, res) => {
 
 // Route to check if the user is authenticated
 app.get("/check-auth", (req, res) => {
-  console.log("Raw cookies (check-auth):", req.headers.cookie); // Log the raw cookies
   console.log("Check-auth session:", req.session); // Log the session object
   if (req.session.username) {
     return res.json({ authenticated: true, username: req.session.username });
@@ -82,13 +116,10 @@ app.get("/check-auth", (req, res) => {
 
 // Route to handle logout
 app.post("/logout", (req, res) => {
-  console.log("Raw cookies (logout):", req.headers.cookie); // Log the raw cookies
-  console.log("Logout session before destroy:", req.session); // Log the session object before destroying
   req.session.destroy((err) => {
     if (err) {
       return res.status(500).json({ success: false, message: "Error logging out" });
     }
-    console.log("Logout session after destroy:", req.session); // Log the session object after destroying
     res.json({ success: true, message: "Logged out successfully" });
   });
 });
@@ -98,13 +129,8 @@ app.get("/csrf-token", (req, res) => {
   res.json({ csrfToken: req.csrfToken() });
 });
 
-// Catch-all route to serve React's index.html for any other routes
-// app.get('*', (req, res) => {
-//   res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
-// });
-
 // Start the server
-app.listen(app.get("port"), () => {
+server.listen(app.get("port"), () => {
   console.log(`Server running at http://localhost:${app.get("port")}/`);
   console.log(`Node environment: ${process.env.NODE_ENV}`);
 });

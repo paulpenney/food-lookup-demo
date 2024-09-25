@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from "react";
 import logo from "./logo.svg";
 import "./App.css";
+import { io } from "socket.io-client"; // Import socket.io-client
 
 function App() {
   const [username, setUsername] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [isAuthChecked, setIsAuthChecked] = useState(false); // New state for auth check
-  const [authMessage, setAuthMessage] = useState(""); // Message from auth check
-  const [csrfToken, setCsrfToken] = useState(""); // State to store CSRF token
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
+  const [authMessage, setAuthMessage] = useState("");
+  const [csrfToken, setCsrfToken] = useState("");
+  const [socket, setSocket] = useState(null); // State to store the socket instance
+  const [socketMessage, setSocketMessage] = useState(""); // State for messages from socket.io
 
   // Fetch CSRF token when the component mounts
   useEffect(() => {
@@ -44,6 +47,33 @@ function App() {
       });
   }, []);
 
+  // Set up the socket.io connection when the component mounts
+  useEffect(() => {
+    const newSocket = io("http://localhost:3001", {
+      withCredentials: true, // Ensure credentials (cookies) are sent with the connection
+    });
+
+    newSocket.on("connect", () => {
+      console.log("Connected to socket.io server with ID:", newSocket.id);
+    });
+
+    // Listen for messages from the server
+    newSocket.on("message", (msg) => {
+      console.log("Message from server:", msg);
+      setSocketMessage(msg);
+    });
+
+    newSocket.on("disconnect", () => {
+      console.log("Disconnected from socket.io server");
+    });
+
+    setSocket(newSocket); // Store the socket instance in state
+
+    return () => {
+      newSocket.disconnect(); // Clean up the socket connection on component unmount
+    };
+  }, []);
+
   const handleLogin = () => {
     if (username.trim() === "") {
       alert("Please enter a username");
@@ -63,6 +93,10 @@ function App() {
       .then((data) => {
         if (data.success) {
           setAuthenticated(true);
+          // Emit a message to the socket.io server
+          if (socket) {
+            socket.emit("message", `User ${username} logged in`);
+          }
         } else {
           alert(data.message);
         }
@@ -86,6 +120,9 @@ function App() {
         if (data.success) {
           setAuthenticated(false);
           setUsername("");
+          if (socket) {
+            socket.emit("message", "User logged out");
+          }
         }
       })
       .catch((error) => {
@@ -93,7 +130,6 @@ function App() {
       });
   };
 
-  // New function to handle check auth button
   const handleCheckAuth = () => {
     fetch("/check-auth", { credentials: "include" })
       .then((res) => res.json())
@@ -142,6 +178,9 @@ function App() {
           <button onClick={handleCheckAuth}>Check Auth Status</button>
           {isAuthChecked && <p>{authMessage}</p>}
         </div>
+
+        {/* Display socket message */}
+        {socketMessage && <p>Socket Message: {socketMessage}</p>}
 
         <p>
           Edit <code>src/App.js</code> and save to reload
