@@ -49,7 +49,10 @@ function App() {
 
   // Set up the socket.io connection when the component mounts
   useEffect(() => {
-    const newSocket = io( {
+
+    console.log("Connecting to socket.io server");
+
+    const newSocket = io("https://fooddemo-1451f28c53d9.herokuapp.com/", {
       withCredentials: true, // Ensure credentials (cookies) are sent with the connection
     });
 
