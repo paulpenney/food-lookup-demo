@@ -49,7 +49,7 @@ function App() {
 
   // Set up the socket.io connection when the component mounts
   useEffect(() => {
-    const newSocket = io("http://localhost:3001", {
+    const newSocket = io( {
       withCredentials: true, // Ensure credentials (cookies) are sent with the connection
     });
 
@@ -65,6 +65,10 @@ function App() {
 
     newSocket.on("disconnect", () => {
       console.log("Disconnected from socket.io server");
+    });
+
+    newSocket.on("connect_error", (error) => {
+      console.error("Connection error:", error);
     });
 
     setSocket(newSocket); // Store the socket instance in state
