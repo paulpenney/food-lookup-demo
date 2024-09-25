@@ -16,10 +16,8 @@
   },
   "scripts": {
     "start": "concurrently \"npm run server\" \"npm run client\"",
-    "nodeserver": "node server.js",
-    "server": "npm run build-client && npm run nodeserver",
+    "server": "node server.js",
     "client": "node start-client.js",
-    "build-client": "npm run build --prefix client", 
     "dev": "echo \"This command has been deprecated. Use 'npm start'\" && exit 1",
     "lint": "eslint ."
   },
